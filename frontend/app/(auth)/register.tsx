@@ -1,6 +1,8 @@
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -13,20 +15,24 @@ import { verticalScale } from "@/utils/styling";
 import BackButton from "@/components/BackButton";
 import Input from "@/components/Input";
 import * as Icons from "phosphor-react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import Button from "@/components/Button";
 
 const Register = () => {
   const nameRef = useRef("");
   const emailRef = useRef("");
   const passwordRef = useRef("");
-  const [isLoading,setIsLoading]= useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async ()=>{
+  const handleSubmit = async () => {
+    if (!emailRef.current || !nameRef.current || !passwordRef.current) {
+      Alert.alert("Sign Up", "please fill out all fields");
+      return;
+    }
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  };
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -36,9 +42,9 @@ const Register = () => {
         <View style={styles.container}>
           <View style={styles.header}>
             <BackButton iconSize={28} />
-            <Typo color={colors.white} size={13}>
-              need some help?
-            </Typo>
+            <Pressable onPress={() => router.push("/(auth)/help")}>
+              <Typo color={colors.white}>need help?</Typo>
+            </Pressable>
           </View>
           <View style={styles.content}>
             <ScrollView
@@ -101,8 +107,17 @@ const Register = () => {
                   </Button>
                 </View>
               </View>
-              <View style={styles.header}>
-                <Typo>already have an account?</Typo>
+              <View style={styles.footer}>
+                <Typo color={colors.neutral600}>already have an account?</Typo>
+                <Pressable onPress={() => router.push("/(auth)/login")}>
+                  <Typo
+                    fontWeight="bold"
+                    color={colors.neutral800}
+                    style={{ textDecorationLine: "underline" }}
+                  >
+                    login
+                  </Typo>
+                </Pressable>
               </View>
             </ScrollView>
           </View>
@@ -139,6 +154,12 @@ const styles = StyleSheet.create({
   form: {
     flexDirection: "column",
     paddingHorizontal: spacingX._20,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 5,
+  },
+  footer: {
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 5,
