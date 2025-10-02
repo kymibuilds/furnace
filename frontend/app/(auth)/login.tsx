@@ -14,20 +14,29 @@ import { verticalScale } from "@/utils/styling";
 import BackButton from "@/components/BackButton";
 import Input from "@/components/Input";
 import * as Icons from "phosphor-react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import Button from "@/components/Button";
+import { useAuth } from "@/context/authContext"; // <-- import your context
 
 const Login = () => {
-  const nameRef = useRef("");
   const emailRef = useRef("");
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth(); // <-- get signIn from context
   const router = useRouter();
 
   const handleSubmit = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      setIsLoading(true);
+      await signIn(emailRef.current, passwordRef.current); // <-- call backend
+    } catch (err: any) {
+      console.log("Login failed:", err.message);
+      // you can show Toast/Alert here
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -56,9 +65,8 @@ const Login = () => {
                 <Typo size={28} fontWeight={"600"}>
                   welcome back user!
                 </Typo>
-                <Typo color={colors.neutral600}>
-                  login to continue
-                </Typo>
+                <Typo color={colors.neutral600}>login to continue</Typo>
+
                 <Input
                   placeholder="enter your email"
                   onChangeText={(value: string) => (emailRef.current = value)}
@@ -69,6 +77,7 @@ const Login = () => {
                     />
                   }
                 />
+
                 <Input
                   placeholder="enter your password"
                   onChangeText={(value: string) =>
@@ -82,20 +91,28 @@ const Login = () => {
                   }
                   secureTextEntry={true}
                 />
+
                 <View style={{ marginTop: spacingY._25, gap: spacingY._15 }}>
                   <Button
                     loading={isLoading}
                     style={{ backgroundColor: colors.neutral900 }}
                     onPress={handleSubmit}
                   >
-                    <Typo color={colors.white}>sign up</Typo>
+                    <Typo color={colors.white}>login</Typo>
                   </Button>
                 </View>
               </View>
+
               <View style={styles.footer}>
-                <Typo color={colors.neutral600}>{"don't have an account?"}</Typo>
+                <Typo color={colors.neutral600}>
+                  {"don't have an account?"}
+                </Typo>
                 <Pressable onPress={() => router.push("/(auth)/register")}>
-                  <Typo fontWeight="bold" color={colors.neutral800} style={{textDecorationLine: "underline"}}>
+                  <Typo
+                    fontWeight="bold"
+                    color={colors.neutral800}
+                    style={{ textDecorationLine: "underline" }}
+                  >
                     register
                   </Typo>
                 </Pressable>

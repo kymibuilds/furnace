@@ -4,7 +4,6 @@ import Typo from "@/components/Typo";
 import { colors, spacingX, spacingY } from "@/constants/theme";
 import { StyleSheet, View } from "react-native";
 import { verticalScale } from "@/utils/styling";
-import Animated, { FadeIn } from "react-native-reanimated";
 import Button from "@/components/Button";
 import { useRouter } from "expo-router";
 
@@ -20,7 +19,7 @@ const Welcome = () => {
         </View>
         <View>
           <Typo color={colors.white} size={33} fontWeight={"800"}>
-            you're
+            {"you're"}
           </Typo>
           <Typo color={colors.white} size={33} fontWeight={"800"}>
             on
