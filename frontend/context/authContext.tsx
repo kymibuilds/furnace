@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
+import { connectSocket, disconnectSocket } from "@/sockets/socket";
 
 export const AuthContext = createContext<AuthContextProps>({
   token: null,
@@ -23,25 +24,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<UserProps | null>(null);
   const router = useRouter();
 
-  useEffect(()=>{
+  useEffect(() => {
     loadToken();
-  },[])
+  }, []);
 
   const loadToken = async () => {
     const storedToken = await AsyncStorage.getItem("token");
     if (storedToken) {
       try {
         const decoded = jwtDecode<DecodedTokenProps>(storedToken);
+
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          // token has expired,navigate to the welcome page
           await AsyncStorage.removeItem("token");
           gotoWelcomePage();
           return;
         }
 
-        //user is logged in
+        // map decoded payload into UserProps
+        const userObj: UserProps = {
+          id: (decoded as any).id,
+          name: (decoded as any).name,
+          email: (decoded as any).email,
+          avatar: (decoded as any).avatar,
+        };
+
         setToken(storedToken);
-        setUser(decoded.user);
+        await connectSocket();
+        setUser(userObj);
         gotoHomePage();
       } catch (error) {
         gotoWelcomePage();
@@ -53,14 +62,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const gotoHomePage = () => {
-    //wait is only for showing splash screen
     setTimeout(() => {
       router.replace("/(main)/home");
     }, 1500);
   };
 
   const gotoWelcomePage = () => {
-    //wait is only for showing splash screen
     setTimeout(() => {
       router.replace("/(auth)/welcome");
     }, 1500);
@@ -70,16 +77,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (token) {
       setToken(token);
       await AsyncStorage.setItem("token", token);
-      //decode token(user)
+
       const decoded = jwtDecode<DecodedTokenProps>(token);
+
+      const userObj: UserProps = {
+        id: (decoded as any).id,
+        name: (decoded as any).name,
+        email: (decoded as any).email,
+        avatar: (decoded as any).avatar,
+      };
+
       console.log("Decoded token:", decoded);
-      setUser(decoded.user);
+      setUser(userObj);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     const response = await login(email, password);
     await updateToken(response.token);
+    await connectSocket();
     router.replace("/(main)/home");
   };
 
@@ -90,14 +106,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     avatar?: string | null
   ) => {
     const response = await register(email, password, name, avatar);
-    console.log("SignUp got:", response); // <-- check token
+    console.log("SignUp got:", response);
     await updateToken(response.token);
+    await connectSocket();
     router.replace("/(main)/home");
   };
+
   const signOut = async () => {
     setToken(null);
     setUser(null);
     await AsyncStorage.removeItem("token");
+    disconnectSocket();
     router.replace("/(auth)/welcome");
   };
 
