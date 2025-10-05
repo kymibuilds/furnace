@@ -1,14 +1,186 @@
-import { StyleSheet, View } from "react-native";
-import React from "react";
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import React, { useEffect, useState } from "react";
 import { colors, spacingX, spacingY } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
 import ScreenWrapper from "@/components/ScreenWrapper";
+import Header from "@/components/Header";
+import BackButton from "@/components/BackButton";
+import Avatar from "@/components/Avatar";
+import * as Icons from "phosphor-react-native";
+import Typo from "@/components/Typo";
+import Input from "@/components/Input";
+import { useAuth } from "@/context/authContext";
+import { UserDataProps } from "@/types";
+import { router } from "expo-router";
+import { updateProfile } from "@/sockets/socketEvents";
+import * as ImagePicker from "expo-image-picker";
 
 const ProfileModal = () => {
+  const { user, signOut } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = useState<UserDataProps>({
+    name: "",
+    email: "",
+    avatar: null,
+  });
+
+  useEffect(() => {
+    setUserData({
+      name: user?.name || "",
+      email: user?.email || "",
+      avatar: user?.avatar,
+    });
+  }, [user]);
+
+  const onPickImageHandler = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    console.log(result);
+    if (!result.canceled) {
+      setUserData({ ...userData, avatar: result.assets[0] });
+    }
+  };
+
+  const handleLogout = async () => {
+    router.back();
+    await signOut();
+  };
+
+  const handleUpdateProfile = async () => {
+    setLoading(true);
+    try {
+      let { name, avatar } = userData;
+      if (!name.trim()) {
+        Alert.alert("User", "please enter your name");
+        return;
+        //good to go.
+      }
+
+      let data = {
+        name,
+      };
+      updateProfile(data);
+
+      if (Platform.OS === "android") {
+        ToastAndroid.show("Profile updated successfully", ToastAndroid.SHORT);
+      } else {
+        alert("Profile updated successfully");
+      }
+    } catch (error) {
+      console.error("Update failed:", error);
+      if (Platform.OS === "android") {
+        ToastAndroid.show("Failed to update profile", ToastAndroid.SHORT);
+      } else {
+        alert("Failed to update profile");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <ScreenWrapper isModal={true} showPattern={false}>
+    <ScreenWrapper isModal={true}>
       <View style={styles.container}>
-        
+        <Header
+          title={"update profile"}
+          leftIcon={
+            Platform.OS === "android" && <BackButton color={colors.black} />
+          }
+        />
+        {/* form */}
+        <ScrollView contentContainerStyle={styles.form}>
+          <View style={styles.container}>
+            <Avatar size={170} uri={userData.avatar} />
+            <TouchableOpacity
+              style={styles.editIcon}
+              onPress={onPickImageHandler}
+            >
+              <Icons.PencilIcon
+                size={verticalScale(30)}
+                color={colors.neutral800}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={{ gap: spacingY._20 }}>
+            <View style={styles.inputContainer}>
+              <Typo style={{ paddingLeft: spacingX._10 }}>email</Typo>
+              <Input
+                value={userData.email}
+                containerStyle={{
+                  borderColor: colors.neutral350,
+                  paddingLeft: spacingX._20,
+                  backgroundColor: colors.neutral200,
+                }}
+                editable={false}
+              />
+              <Typo style={{ paddingLeft: spacingX._10 }}>name</Typo>
+              <Input
+                value={userData.name}
+                containerStyle={{
+                  borderColor: colors.neutral350,
+                  paddingLeft: spacingX._20,
+                  backgroundColor: colors.neutral100,
+                }}
+                editable={true}
+                onChange={(event) =>
+                  setUserData({ ...userData, name: event.nativeEvent.text })
+                }
+              />
+              <TouchableOpacity
+                style={[
+                  styles.updateButton,
+                  loading && styles.updateButtonDisabled,
+                ]}
+                activeOpacity={0.9}
+                onPress={handleUpdateProfile}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Icons.FloppyDiskBackIcon
+                      size={verticalScale(22)}
+                      color={colors.white}
+                      weight="bold"
+                    />
+                    <Typo style={{ color: colors.white, fontWeight: "400" }}>
+                      Update Profile
+                    </Typo>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          activeOpacity={0.8}
+          onPress={handleLogout}
+        >
+          <Icons.SignOutIcon
+            size={verticalScale(22)}
+            color={colors.white}
+            weight="bold"
+          />
+          <Typo style={{ color: colors.white, fontWeight: "600" }}>Logout</Typo>
+        </TouchableOpacity>
       </View>
     </ScreenWrapper>
   );
@@ -21,7 +193,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     paddingHorizontal: spacingY._20,
-    // paddingVertical: spacingY._30
+    //paddingVertical: spacingY._30
   },
   footer: {
     alignItems: "center",
@@ -56,7 +228,7 @@ const styles = StyleSheet.create({
   editIcon: {
     position: "absolute",
     bottom: spacingY._5,
-    right: spacingY._7,
+    right: spacingY._65,
     borderRadius: 100,
     backgroundColor: colors.neutral100,
     shadowColor: colors.black,
@@ -68,5 +240,33 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     gap: spacingY._7,
+  },
+  updateButton: {
+    height: verticalScale(56),
+    borderRadius: verticalScale(20),
+    backgroundColor: colors.neutral600,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacingX._10,
+    width: "100%",
+  },
+  updateButtonDisabled: {
+    opacity: 0.6,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.rose,
+    borderRadius: 50,
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: spacingX._25,
+    gap: spacingX._10,
+    shadowColor: colors.rose,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 5,
   },
 });

@@ -6,7 +6,7 @@ import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { useAuth } from "@/context/authContext";
 import * as Icons from "phosphor-react-native";
 import { verticalScale } from "@/utils/styling";
-import { router, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 //import { testSocket } from "@/sockets/socketEvents";
 //import {useEffect} from 'react';
 
@@ -41,13 +41,14 @@ const Home = () => {
               welcome back, {currentUser?.name} 👋
             </Typo>
           </View>
-          <TouchableOpacity style={styles.settingIcon} onPress={() => router.push("/(main)/profileModal")}>
+          <TouchableOpacity
+            style={styles.settingIcon}
+            onPress={() => router.push("/(main)/profileModal")}
+          >
             <Icons.GearSixIcon color={colors.white} size={verticalScale(22)} />
           </TouchableOpacity>
         </View>
-        <View style={styles.content}>
-
-        </View>
+        <View style={styles.content}></View>
       </View>
     </ScreenWrapper>
   );
