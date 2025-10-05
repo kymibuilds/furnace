@@ -23,9 +23,10 @@ import { UserDataProps } from "@/types";
 import { router } from "expo-router";
 import { updateProfile } from "@/sockets/socketEvents";
 import * as ImagePicker from "expo-image-picker";
+import { uploadFileToCloundinary } from "@/services/imageService";
 
 const ProfileModal = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateUserData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState<UserDataProps>({
     name: "",
@@ -66,14 +67,38 @@ const ProfileModal = () => {
       let { name, avatar } = userData;
       if (!name.trim()) {
         Alert.alert("User", "please enter your name");
+        setLoading(false);
         return;
-        //good to go.
       }
 
       let data = {
         name,
+        avatar,
       };
+      
+      if(avatar && avatar?.uri){
+        const res = await uploadFileToCloundinary(avatar,"profiles");
+        console.log("result:", res)
+        if(res.success){
+          data.avatar=res.data;
+        }else{
+          Alert.alert("User",res.msg);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Update profile via socket
       updateProfile(data);
+      
+      // Update local context immediately with the new data
+      if (updateUserData) {
+        updateUserData({
+          ...user,
+          name: data.name,
+          avatar: data.avatar,
+        });
+      }
 
       if (Platform.OS === "android") {
         ToastAndroid.show("Profile updated successfully", ToastAndroid.SHORT);
@@ -193,7 +218,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     paddingHorizontal: spacingY._20,
-    //paddingVertical: spacingY._30
   },
   footer: {
     alignItems: "center",
@@ -222,8 +246,6 @@ const styles = StyleSheet.create({
     borderRadius: 200,
     borderWidth: 1,
     borderColor: colors.neutral500,
-    // overflow: "hidden",
-    // position: "relative",
   },
   editIcon: {
     position: "absolute",

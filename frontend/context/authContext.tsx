@@ -13,6 +13,7 @@ export const AuthContext = createContext<AuthContextProps>({
   signUp: async () => {},
   signOut: async () => {},
   updateToken: async () => {},
+  updateUserData: async () => {},
 });
 
 type AuthProviderProps = {
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     loadToken();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadToken = async () => {
@@ -34,13 +35,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (storedToken) {
       try {
         const decoded = jwtDecode<DecodedTokenProps>(storedToken);
-
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
           await AsyncStorage.removeItem("token");
           gotoWelcomePage();
           return;
         }
-
         // map decoded payload into UserProps
         const userObj: UserProps = {
           id: (decoded as any).id,
@@ -48,7 +47,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           email: (decoded as any).email,
           avatar: (decoded as any).avatar,
         };
-
         setToken(storedToken);
         await connectSocket();
         setUser(userObj);
@@ -78,18 +76,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (token) {
       setToken(token);
       await AsyncStorage.setItem("token", token);
-
       const decoded = jwtDecode<DecodedTokenProps>(token);
-
       const userObj: UserProps = {
         id: (decoded as any).id,
         name: (decoded as any).name,
         email: (decoded as any).email,
         avatar: (decoded as any).avatar,
       };
-
       console.log("Decoded token:", decoded);
       setUser(userObj);
+    }
+  };
+
+  const updateUserData = async (updatedUser: Partial<UserProps>) => {
+    if (user) {
+      const newUser = { ...user, ...updatedUser };
+      setUser(newUser);
+      
+      // Update the token with new user data
+      if (token) {
+        try {
+          const decoded = jwtDecode<any>(token);
+          // Create a new token payload with updated user data
+          const updatedPayload = {
+            ...decoded,
+            name: newUser.name,
+            avatar: newUser.avatar,
+          };
+          
+          // Note: In a real app, you'd get a new token from the server
+          // For now, we're just updating the local state
+          // The server should return a new token after profile update
+          
+          console.log("User data updated locally:", newUser);
+        } catch (error) {
+          console.log("Error updating user data:", error);
+        }
+      }
     }
   };
 
@@ -123,7 +146,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, signIn, signOut, signUp, updateToken }}
+      value={{ token, user, signIn, signOut, signUp, updateToken, updateUserData }}
     >
       {children}
     </AuthContext.Provider>
