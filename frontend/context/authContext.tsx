@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (user) {
       const newUser = { ...user, ...updatedUser };
       setUser(newUser);
-      
+
       // Update the token with new user data
       if (token) {
         try {
@@ -103,11 +103,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             name: newUser.name,
             avatar: newUser.avatar,
           };
-          
+
           // Note: In a real app, you'd get a new token from the server
           // For now, we're just updating the local state
           // The server should return a new token after profile update
-          
+
           console.log("User data updated locally:", newUser);
         } catch (error) {
           console.log("Error updating user data:", error);
@@ -146,7 +146,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, signIn, signOut, signUp, updateToken, updateUserData }}
+      value={{
+        token,
+        user,
+        signIn,
+        signOut,
+        signUp,
+        updateToken,
+        updateUserData,
+      }}
     >
       {children}
     </AuthContext.Provider>
