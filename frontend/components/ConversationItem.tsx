@@ -1,12 +1,74 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import React from "react";
-import { spacingX, spacingY } from "@/constants/theme";
+import { colors, spacingX, spacingY } from "@/constants/theme";
+import Avatar from "./Avatar";
+import { ConversationListItemProps } from "@/types";
+import Typo from "./Typo";
 
-const ConversationItem = () => {
+const ConversationItem = ({ item, showDivider }: ConversationListItemProps) => {
+  const openConversationHandler = () => {};
+
+  const getLastMessageDate = (
+    message: { createdAt?: string | number | Date } | null | undefined
+  ) => {
+    if (!message?.createdAt) return "";
+
+    const date = new Date(message.createdAt);
+    if (isNaN(date.getTime())) return "";
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    if (isToday) {
+      // Show only time for today’s messages
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    // Otherwise show day + month
+    return date.toLocaleDateString([], { day: "numeric", month: "short" });
+  };
+
+  const getLastMessageContent = (
+    message: { content?: string; senderName?: string } | null | undefined
+  ) => {
+    if (!message) return "";
+    if (typeof message.content === "string" && message.content.trim() !== "") {
+      return message.content;
+    }
+    return message.senderName ? `${message.senderName} sent a message` : "";
+  };
+
   return (
-    <View>
-      <Text>ConversationItem</Text>
-    </View>
+    <>
+      <TouchableOpacity
+        style={styles.conversationItem}
+        onPress={openConversationHandler}
+      >
+        <Avatar uri={null} size={47} isGroup={item.type === "group"} />
+        <View style={{ flex: 1 }}>
+          <View style={styles.row}>
+            <Typo size={17} fontWeight="600">
+              {item.name}
+            </Typo>
+            {item?.lastMessage && (
+              <Typo size={15}>{getLastMessageDate(item.lastMessage)}</Typo>
+            )}
+          </View>
+          <Typo
+            size={13}
+            color={colors.neutral600}
+            textProps={{ numberOfLines: 1 }}
+          >
+            {getLastMessageContent(item.lastMessage)}
+          </Typo>
+        </View>
+      </TouchableOpacity>
+
+      {showDivider && <View style={styles.divider} />}
+    </>
   );
 };
 
@@ -26,8 +88,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    width: "95%",
+    width: "100%",
     alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.07)",
+    backgroundColor: "rgba(0, 0, 0, 0.08)",
+    marginTop: spacingY._5,
   },
 });

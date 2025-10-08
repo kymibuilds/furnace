@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextStyle } from 'react-native'
+import { View, Text,TextStyle } from 'react-native'
 import React from 'react'
 import { colors } from '@/constants/theme'
 import { TypoProps } from '@/types'
