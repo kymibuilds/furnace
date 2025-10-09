@@ -4,9 +4,22 @@ import { colors, spacingX, spacingY } from "@/constants/theme";
 import Avatar from "./Avatar";
 import { ConversationListItemProps } from "@/types";
 import Typo from "./Typo";
+import { useRouter } from "expo-router";
 
 const ConversationItem = ({ item, showDivider }: ConversationListItemProps) => {
-  const openConversationHandler = () => {};
+  const router = useRouter(); // <-- router must be defined before using
+
+  const openConversationHandler = () => {
+    router.push({
+      pathname: "/(main)/conversation", // make sure this matches your folder route
+      params: {
+        id: item._id,
+        type: item.type,
+        name: item.name,
+        participants: JSON.stringify(item.participants),
+      },
+    });
+  };
 
   const getLastMessageDate = (
     message: { createdAt?: string | number | Date } | null | undefined
@@ -20,14 +33,9 @@ const ConversationItem = ({ item, showDivider }: ConversationListItemProps) => {
     const isToday = date.toDateString() === now.toDateString();
 
     if (isToday) {
-      // Show only time for today’s messages
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    // Otherwise show day + month
     return date.toLocaleDateString([], { day: "numeric", month: "short" });
   };
 
@@ -35,9 +43,7 @@ const ConversationItem = ({ item, showDivider }: ConversationListItemProps) => {
     message: { content?: string; senderName?: string } | null | undefined
   ) => {
     if (!message) return "";
-    if (typeof message.content === "string" && message.content.trim() !== "") {
-      return message.content;
-    }
+    if (message.content?.trim()) return message.content;
     return message.senderName ? `${message.senderName} sent a message` : "";
   };
 

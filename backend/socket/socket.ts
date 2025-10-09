@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { registerUserEvents } from "./userEvents.ts";
+import { registerChatEvents } from "./chatEvents.ts";
+import conversation from "../models/conversation.ts";
 
 dotenv.config();
 
@@ -52,10 +54,28 @@ export function initializeSocket(server: any): SocketIOServer {
     );
 
     // register events
+    registerChatEvents(io, socket);
     registerUserEvents(io, socket);
 
+    //join all the conversations the user is part of
+    try {
+      const conversations = await conversation
+        .find({
+          participants: socket.data.userId,
+        })
+        .select("_id");
+
+        conversations.forEach(conversation=>{
+          socket.join(conversation._id.toString());
+        });
+    } catch (error: any) {
+      console.log("error", error);
+    }
+
     socket.on("disconnect", (reason) => {
-      console.log(`⚠️ User disconnected: ${socket.data.userId}, reason: ${reason}`);
+      console.log(
+        `⚠️ User disconnected: ${socket.data.userId}, reason: ${reason}`
+      );
     });
   });
 

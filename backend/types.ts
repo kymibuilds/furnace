@@ -17,5 +17,5 @@ export interface ConversationProps extends Document {
   createdBy: Types.ObjectId;
   avatar?: string;
   createdAt: Date;
-  updateAT: Date;
+  updatedAt: Date;
 }

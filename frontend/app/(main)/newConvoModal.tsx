@@ -1,5 +1,5 @@
 import { StyleSheet, TouchableOpacity, View, ScrollView } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
@@ -11,71 +11,56 @@ import Typo from "@/components/Typo";
 import * as ImagePicker from "expo-image-picker";
 import Input from "@/components/Input";
 import { Ionicons } from "@expo/vector-icons";
+import { getContacts, newConversation } from "@/sockets/socketEvents";
+import { useAuth } from "@/context/authContext";
+
+interface User {
+  id: string;
+  name: string;
+  avatar?: string;
+  email?: string;
+}
 
 const NewConvoModal = () => {
+  const { user: currentUser } = useAuth(); // ✅ get currentUser from context
   const { isGroup } = useLocalSearchParams();
   const router = useRouter();
-
+  const [contacts, setContacts] = useState<User[]>([]);
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string>("");
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-
-  const dummyUsers = [
-    { id: 1, name: "Alice Johnson", avatar: "https://i.pravatar.cc/150?img=1" },
-    { id: 2, name: "Bob Smith", avatar: "https://i.pravatar.cc/150?img=2" },
-    { id: 3, name: "Charlie Brown", avatar: "https://i.pravatar.cc/150?img=3" },
-    { id: 4, name: "Diana Prince", avatar: "https://i.pravatar.cc/150?img=4" },
-    { id: 5, name: "Ethan Hunt", avatar: "https://i.pravatar.cc/150?img=5" },
-    {
-      id: 6,
-      name: "Fiona Gallagher",
-      avatar: "https://i.pravatar.cc/150?img=6",
-    },
-    {
-      id: 7,
-      name: "George Kostanza",
-      avatar: "https://i.pravatar.cc/150?img=7",
-    },
-    { id: 8, name: "Hannah Baker", avatar: "https://i.pravatar.cc/150?img=8" },
-    { id: 9, name: "Isaac Newton", avatar: "https://i.pravatar.cc/150?img=9" },
-    {
-      id: 10,
-      name: "Julia Roberts",
-      avatar: "https://i.pravatar.cc/150?img=10",
-    },
-    {
-      id: 11,
-      name: "Kevin Malone",
-      avatar: "https://i.pravatar.cc/150?img=11",
-    },
-    { id: 12, name: "Laura Croft", avatar: "https://i.pravatar.cc/150?img=12" },
-    {
-      id: 13,
-      name: "Michael Scott",
-      avatar: "https://i.pravatar.cc/150?img=13",
-    },
-    { id: 14, name: "Nina Simone", avatar: "https://i.pravatar.cc/150?img=14" },
-    { id: 15, name: "Oscar Wilde", avatar: "https://i.pravatar.cc/150?img=15" },
-    { id: 16, name: "Paula Abdul", avatar: "https://i.pravatar.cc/150?img=16" },
-    {
-      id: 17,
-      name: "Quentin Tarantino",
-      avatar: "https://i.pravatar.cc/150?img=17",
-    },
-    {
-      id: 18,
-      name: "Rachel Green",
-      avatar: "https://i.pravatar.cc/150?img=18",
-    },
-    {
-      id: 19,
-      name: "Steve Rogers",
-      avatar: "https://i.pravatar.cc/150?img=19",
-    },
-    { id: 20, name: "Tina Fey", avatar: "https://i.pravatar.cc/150?img=20" },
-  ];
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   const isGroupMode = isGroup === "group";
+
+  useEffect(() => {
+    // Register socket listeners
+    getContacts(processGetContacts);
+    newConversation(processNewConversation);
+
+    // Fetch contacts
+    getContacts(null);
+
+    // Cleanup listeners on unmount
+    return () => {
+      getContacts(processGetContacts, true);
+      newConversation(processNewConversation, true);
+    };
+  }, []);
+
+  const processGetContacts = (res: any) => {
+    console.log("got Contacts", res);
+    if (res?.success && Array.isArray(res.data)) {
+      setContacts(res.data);
+    }
+  };
+
+  const processNewConversation = (res: any) => {
+    console.log("new conversation result:", res);
+    if (res.success && res.data) {
+      console.log("Conversation created/populated:", res.data);
+      router.back(); // Close modal after conversation creation
+    }
+  };
 
   const onPickImageHandler = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,21 +72,26 @@ const NewConvoModal = () => {
     if (!result.canceled) setGroupAvatar(result.assets[0].uri);
   };
 
-  const toggleUserSelection = (id: number) => {
+  const toggleUserSelection = (id: string) => {
     setSelectedUsers((prev) =>
       prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
     );
   };
 
-  const onSelectUser = (user: any) => {
+  const onSelectUser = (user: User) => {
+    if (!currentUser) return; // safety check
     if (!isGroupMode) {
-      router.back();
+      newConversation({
+        type: "dm",
+        participants: [currentUser.id, user.id],
+      });
     } else {
       toggleUserSelection(user.id);
     }
   };
 
   const onCreateGroup = () => {
+    if (!currentUser) return;
     if (!groupName.trim()) {
       alert("Please enter a group name");
       return;
@@ -111,12 +101,12 @@ const NewConvoModal = () => {
       return;
     }
 
-    console.log("Creating group:", {
-      groupName,
-      groupAvatar,
-      selectedUsers,
+    newConversation({
+      type: "group",
+      participants: [currentUser.id, ...selectedUsers],
+      name: groupName,
+      avatar: groupAvatar,
     });
-    router.back();
   };
 
   return (
@@ -127,7 +117,7 @@ const NewConvoModal = () => {
           leftIcon={<BackButton color={colors.black} />}
         />
 
-        {/* Group mode setup */}
+        {/* Group setup section */}
         {isGroupMode && (
           <>
             <View style={styles.groupInfoContainer}>
@@ -138,7 +128,7 @@ const NewConvoModal = () => {
                 <Avatar
                   uri={groupAvatar || "https://i.pravatar.cc/150?img=11"}
                   size={100}
-                  isGroup={true}
+                  isGroup
                 />
               </TouchableOpacity>
             </View>
@@ -159,13 +149,13 @@ const NewConvoModal = () => {
           </>
         )}
 
-        {/* User list */}
+        {/* Contacts list */}
         <ScrollView
           style={styles.contactList}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: verticalScale(90) }}
         >
-          {dummyUsers.map((user) => {
+          {contacts.map((user) => {
             const isSelected = selectedUsers.includes(user.id);
             return (
               <TouchableOpacity
@@ -177,6 +167,7 @@ const NewConvoModal = () => {
                   <Avatar uri={user.avatar} size={50} />
                   <Typo size={16}>{user.name}</Typo>
                 </View>
+
                 {isGroupMode && (
                   <Ionicons
                     name={isSelected ? "checkbox" : "square-outline"}
@@ -189,7 +180,7 @@ const NewConvoModal = () => {
           })}
         </ScrollView>
 
-        {/* Create group button */}
+        {/* Floating "Create Group" button */}
         {isGroupMode && (
           <TouchableOpacity
             style={styles.createGroupButton}
@@ -206,17 +197,9 @@ const NewConvoModal = () => {
 export default NewConvoModal;
 
 const styles = StyleSheet.create({
-  container: {
-    marginHorizontal: spacingX._15,
-    flex: 1,
-  },
-  groupInfoContainer: {
-    alignItems: "center",
-    marginTop: spacingY._10,
-  },
-  avatarContainer: {
-    marginBottom: spacingY._10,
-  },
+  container: { marginHorizontal: spacingX._15, flex: 1 },
+  groupInfoContainer: { alignItems: "center", marginTop: spacingY._10 },
+  avatarContainer: { marginBottom: spacingY._10 },
   groupNameContainer: {
     width: "100%",
     marginTop: spacingY._10,
@@ -225,22 +208,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  contactList: {
-    marginTop: spacingY._10,
-  },
+  contactList: { marginTop: spacingY._10 },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between", // ensures checkbox stays at extreme right
+    justifyContent: "space-between",
     paddingVertical: spacingY._10,
     borderBottomWidth: 0.5,
     borderBottomColor: colors.neutral200,
   },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacingX._10,
-  },
+  userInfo: { flexDirection: "row", alignItems: "center", gap: spacingX._10 },
   createGroupButton: {
     position: "absolute",
     bottom: spacingY._30,
